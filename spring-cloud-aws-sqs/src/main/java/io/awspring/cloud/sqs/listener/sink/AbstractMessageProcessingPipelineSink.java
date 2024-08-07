@@ -19,13 +19,8 @@ import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.ObservationRegistryAware;
 import io.awspring.cloud.sqs.listener.TaskExecutorAware;
-import io.awspring.cloud.sqs.listener.observation.BatchMessageObservationContext;
-import io.awspring.cloud.sqs.listener.observation.DefaultBatchMessageObservationConvention;
-import io.awspring.cloud.sqs.listener.observation.DefaultSingleMessageObservationConvention;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation;
-import io.awspring.cloud.sqs.listener.observation.SingleMessageObservationContext;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
-import io.micrometer.observation.Observation;
+import io.awspring.cloud.sqs.observation.*;
 import io.micrometer.observation.ObservationRegistry;
 import java.util.Collection;
 import java.util.Collections;
@@ -58,9 +53,9 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageProcessingPipelineSink.class);
 
-	private static final DefaultSingleMessageObservationConvention DEFAULT_SINGLE_MESSAGE_OBSERVATION_CONVENTION = new DefaultSingleMessageObservationConvention();
+	private static final SingleMessagePollingProcessObservationConvention DEFAULT_SINGLE_MESSAGE_PROCESS_OBSERVATION_CONVENTION = new SingleMessagePollingProcessObservationConvention();
 
-	private static final DefaultBatchMessageObservationConvention DEFAULT_BATCH_MESSAGE_OBSERVATION_CONVENTION = new DefaultBatchMessageObservationConvention();
+	private static final BatchMessagePollingProcessObservationConvention DEFAULT_BATCH_MESSAGE_PROCESS_OBSERVATION_CONVENTION = new BatchMessagePollingProcessObservationConvention();
 
 	private final Object lifecycleMonitor = new Object();
 
@@ -142,29 +137,20 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 
 	protected CompletableFuture<Void> tryObservedCompletableFuture(Supplier<CompletableFuture<Void>> supplier,
 			Message<T> msg) {
-		return tryObservedCompletableFuture(supplier,
-				() -> MessageObservationDocumentation.SINGLE_MESSAGE_PROCESS.observation(null,
-						DEFAULT_SINGLE_MESSAGE_OBSERVATION_CONVENTION,
-						() -> new SingleMessageObservationContext(msg.getHeaders()), this.observationRegistry));
+		return Objects.requireNonNull(MessageObservationDocumentation.SINGLE_MESSAGE_POLLING_PROCESS.observation(null,
+				DEFAULT_SINGLE_MESSAGE_PROCESS_OBSERVATION_CONVENTION,
+				() -> new SingleMessagePollingProcessObservationContext(msg.getHeaders()), this.observationRegistry)
+				.observe(supplier));
 	}
 
 	protected CompletableFuture<Void> tryObservedCompletableFuture(Supplier<CompletableFuture<Void>> supplier,
 			Collection<Message<T>> msgs) {
-		return tryObservedCompletableFuture(supplier,
-				() -> MessageObservationDocumentation.BATCH_MESSAGE_PROCESS.observation(null,
-						DEFAULT_BATCH_MESSAGE_OBSERVATION_CONVENTION,
-						() -> new BatchMessageObservationContext(msgs.stream().map(Message::getHeaders).toList()),
-						this.observationRegistry));
-	}
-
-	private CompletableFuture<Void> tryObservedCompletableFuture(Supplier<CompletableFuture<Void>> futureSupplier,
-			Supplier<Observation> observationSupplier) {
-		if (this.observationRegistry.isNoop()) {
-			logger.debug("Observation registry is noop.");
-			return futureSupplier.get();
-		}
-
-		return Objects.requireNonNull(observationSupplier.get().observe(futureSupplier));
+		return Objects.requireNonNull(MessageObservationDocumentation.BATCH_MESSAGE_POLLING_PROCESS
+				.observation(null, DEFAULT_BATCH_MESSAGE_PROCESS_OBSERVATION_CONVENTION,
+						() -> new BatchMessagePollingProcessObservationContext(
+								msgs.stream().map(Message::getHeaders).toList()),
+						this.observationRegistry)
+				.observe(supplier));
 	}
 
 	private StopWatch getStartedWatch() {

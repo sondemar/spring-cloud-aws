@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
 import io.micrometer.observation.transport.ReceiverContext;
 import java.util.Collection;
@@ -21,18 +21,19 @@ import org.springframework.messaging.MessageHeaders;
 
 /**
  * Context that holds information for observation metadata collection during the
- * {@link MessageObservationDocumentation#BATCH_MESSAGE_PROCESS processing of the whole received batch of SQS messages}.
+ * {@link MessageObservationDocumentation#BATCH_MESSAGE_POLLING_PROCESS processing of the whole received batch of SQS
+ * messages}.
  * <p>
  * The inbound tracing information is propagated in the form of a list of {@link io.micrometer.tracing.Link} by looking
  * it up in {@link MessageHeaders#get(Object, Class) incoming SQS message headers} of the entire received batch.
  *
  * @author Mariusz Sondecki
  */
-public class BatchMessageObservationContext extends ReceiverContext<Collection<MessageHeaders>> {
+public class BatchMessagePollingProcessObservationContext extends ReceiverContext<Collection<MessageHeaders>> {
 
-	public BatchMessageObservationContext(Collection<MessageHeaders> messages) {
+	public BatchMessagePollingProcessObservationContext(Collection<MessageHeaders> messageHeaders) {
 		super((carrier, key) -> null);
-		setCarrier(messages);
+		setCarrier(messageHeaders);
 	}
 
 }

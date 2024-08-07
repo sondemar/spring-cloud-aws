@@ -13,24 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
 import io.micrometer.common.KeyValue;
 import io.micrometer.common.KeyValues;
+import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationConvention;
-import io.micrometer.observation.transport.ReceiverContext;
 import org.springframework.lang.Nullable;
 
 /**
- * {@link ObservationConvention} interface for {@link MessageObservationDocumentation#BATCH_MESSAGE_PROCESS SQS message
- * process} operations.
+ * {@link ObservationConvention} interface for SQS message operations.
  *
  * @author Mariusz Sondecki
  */
-public interface MessageObservationConvention<T extends ReceiverContext<?>> extends ObservationConvention<T> {
+public interface MessageObservationConvention<T extends Observation.Context> extends ObservationConvention<T> {
 
 	@Nullable
 	String getMessageId(T context);
+
+	MessagingOperationType getMessageType();
 
 	default String getOrDefault(String value) {
 		if (value == null) {
@@ -40,13 +41,13 @@ public interface MessageObservationConvention<T extends ReceiverContext<?>> exte
 	}
 
 	default KeyValue getId(T context) {
-		String messageIds = getOrDefault(getMessageId(context));
-		return KeyValue.of(MessageObservationDocumentation.HighCardinalityKeyNames.MESSAGE_ID, messageIds);
+		String messageId = getOrDefault(getMessageId(context));
+		return KeyValue.of(MessageObservationDocumentation.HighCardinalityKeyNames.MESSAGE_ID, messageId);
 	}
 
 	@Override
 	default String getContextualName(T context) {
-		return getId(context).getValue() + " process";
+		return "%s %s".formatted(getId(context).getValue(), getMessageType().getValue());
 	}
 
 	@Override
@@ -54,4 +55,14 @@ public interface MessageObservationConvention<T extends ReceiverContext<?>> exte
 		return KeyValues.of(getId(context));
 	}
 
+	@Override
+	default KeyValues getLowCardinalityKeyValues(T context) {
+		return KeyValues.of(KeyValue.of(MessageObservationDocumentation.LowCardinalityKeyNames.OPERATION,
+				getMessageType().getValue()));
+	}
+
+	@Override
+	default String getName() {
+		return "sqs." + getMessageType().getValue().replace(" ", ".");
+	}
 }

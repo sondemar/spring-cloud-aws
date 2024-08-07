@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,11 +32,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.messaging.MessageHeaders;
 
 /**
- * Tests for {@link BatchMessageProcessObservationHandler}.
+ * Tests for {@link BatchMessageProcessTracingObservationHandler}.
  *
  * @author Mariusz Sondecki
  */
-class BatchMessageProcessObservationHandlerTest {
+class BatchMessageProcessTracingObservationHandlerTest {
 
 	private static final String TRACE_ID_HEADER = "X-B3-TraceId";
 
@@ -51,8 +51,8 @@ class BatchMessageProcessObservationHandlerTest {
 	private final io.micrometer.tracing.Tracer tracer = new BraveTracer(tracing.tracer(),
 			new BraveCurrentTraceContext(tracing.currentTraceContext()), new BraveBaggageManager());
 
-	private final BatchMessageProcessObservationHandler handler = new BatchMessageProcessObservationHandler(tracer,
-			new BravePropagator(tracing));
+	private final BatchMessageProcessTracingObservationHandler handler = new BatchMessageProcessTracingObservationHandler(
+			tracer, new BravePropagator(tracing));
 
 	@Test
 	void shouldCreateLinksForAllMessages() {
@@ -68,12 +68,12 @@ class BatchMessageProcessObservationHandlerTest {
 						Map.of(TRACE_ID_HEADER, traceId1, SPAN_ID_HEADER, spanId1, PARENT_SPAN_ID_HEADER, spanId1)),
 				new MessageHeaders(
 						Map.of(TRACE_ID_HEADER, traceId2, SPAN_ID_HEADER, spanId2, PARENT_SPAN_ID_HEADER, spanId2)));
-		BatchMessageObservationContext batchMessageObservationContext = new BatchMessageObservationContext(
+		BatchMessagePollingProcessObservationContext context = new BatchMessagePollingProcessObservationContext(
 				receivedMessageHeaders);
 
 		// WHEN
-		handler.onStart(batchMessageObservationContext);
-		handler.onStop(batchMessageObservationContext);
+		handler.onStart(context);
+		handler.onStop(context);
 
 		// THEN
 		MutableSpan finishedSpan = testSpanHandler.get(0);

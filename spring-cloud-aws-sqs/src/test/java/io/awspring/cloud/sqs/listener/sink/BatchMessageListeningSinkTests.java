@@ -19,9 +19,10 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation.HighCardinalityKeyNames;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
+import io.awspring.cloud.sqs.observation.MessageObservationDocumentation;
+import io.awspring.cloud.sqs.observation.MessageObservationDocumentation.HighCardinalityKeyNames;
+import io.awspring.cloud.sqs.observation.MessagingOperationType;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
 import java.util.ArrayList;
@@ -56,14 +57,13 @@ class BatchMessageListeningSinkTests {
 		sink.stop();
 		assertThat(received).containsExactlyElementsOf(messagesToEmit);
 		TestObservationRegistryAssert.assertThat(registry)
-				.hasNumberOfObservationsWithNameEqualTo("sqs.batch.message.process", 1)
-				.forAllObservationsWithNameEqualTo("sqs.batch.message.process",
+				.hasNumberOfObservationsWithNameEqualTo("sqs.batch.message.polling.process", 1)
+				.forAllObservationsWithNameEqualTo("sqs.batch.message.polling.process",
 						observationContextAssert -> observationContextAssert
 								.hasHighCardinalityKeyValueWithKey(HighCardinalityKeyNames.MESSAGE_ID.asString())
 								.hasLowCardinalityKeyValue(
-										MessageObservationDocumentation.LowCardinalityKeyNames.PROCESSING_MODE
-												.asString(),
-										"batch"));
+										MessageObservationDocumentation.LowCardinalityKeyNames.OPERATION.asString(),
+										MessagingOperationType.BATCH_POLLING_PROCESS.getValue()));
 	}
 
 	private MessageProcessingPipeline<Integer> getMessageProcessingPipeline(List<Message<Integer>> received) {

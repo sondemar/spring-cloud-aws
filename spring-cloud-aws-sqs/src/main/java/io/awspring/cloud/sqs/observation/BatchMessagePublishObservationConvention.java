@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationConvention;
 
 /**
- * {@link ObservationConvention} interface for {@link MessageObservationDocumentation#BATCH_MESSAGE_PROCESS SQS message
- * process} operations.
+ * {@link ObservationConvention} interface for {@link MessageObservationDocumentation#BATCH_MESSAGE_PUBLISH SQS message
+ * publish} operations.
  *
  * @author Mariusz Sondecki
  */
-public interface BatchMessageObservationConvention
-		extends MessageObservationConvention<BatchMessageObservationContext> {
+public interface BatchMessagePublishObservationConvention
+		extends MessageObservationConvention<BatchMessagePublishObservationContext> {
 
 	@Override
 	default boolean supportsContext(Observation.Context context) {
-		return context instanceof BatchMessageObservationContext;
+		return context instanceof BatchMessagePublishObservationContext;
 	}
 }

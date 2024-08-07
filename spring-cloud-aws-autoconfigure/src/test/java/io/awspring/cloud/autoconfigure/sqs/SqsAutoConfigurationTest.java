@@ -34,7 +34,7 @@ import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.ContainerOptionsBuilder;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.observation.BatchMessageProcessObservationHandler;
+import io.awspring.cloud.sqs.observation.BatchMessageProcessTracingObservationHandler;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
 import io.micrometer.tracing.Tracer;
@@ -209,10 +209,10 @@ class SqsAutoConfigurationTest {
 	}
 
 	@Test
-	void configureBatchMessageProcessObservationHandler() {
+	void configureSqsObservation() {
 		this.contextRunner.withPropertyValues("spring.cloud.aws.sqs.enabled:true")
 				.withUserConfiguration(TracingConfiguration.class)
-				.run(context -> assertThat(context).hasSingleBean(BatchMessageProcessObservationHandler.class));
+				.run(context -> assertThat(context).hasSingleBean(BatchMessageProcessTracingObservationHandler.class));
 	}
 
 	@Configuration(proxyBeanMethods = false)

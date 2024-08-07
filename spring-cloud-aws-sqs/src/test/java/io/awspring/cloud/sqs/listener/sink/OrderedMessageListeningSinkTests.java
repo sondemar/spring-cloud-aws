@@ -19,9 +19,10 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation.HighCardinalityKeyNames;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
+import io.awspring.cloud.sqs.observation.MessageObservationDocumentation;
+import io.awspring.cloud.sqs.observation.MessageObservationDocumentation.HighCardinalityKeyNames;
+import io.awspring.cloud.sqs.observation.MessagingOperationType;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * Tests for {@link OrderedMessageSink}.
  *
  * @author Tomaz Fernandes
+ * @author Mariusz Sondecki
  */
 class OrderedMessageListeningSinkTests {
 
@@ -55,14 +57,13 @@ class OrderedMessageListeningSinkTests {
 		sink.stop();
 		assertThat(received).containsSequence(messagesToEmit);
 		TestObservationRegistryAssert.assertThat(registry)
-				.hasNumberOfObservationsWithNameEqualTo("sqs.single.message.process", numberOfMessagesToEmit)
-				.forAllObservationsWithNameEqualTo("sqs.single.message.process",
+				.hasNumberOfObservationsWithNameEqualTo("sqs.single.message.polling.process", numberOfMessagesToEmit)
+				.forAllObservationsWithNameEqualTo("sqs.single.message.polling.process",
 						observationContextAssert -> observationContextAssert
 								.hasHighCardinalityKeyValueWithKey(HighCardinalityKeyNames.MESSAGE_ID.asString())
 								.hasLowCardinalityKeyValue(
-										MessageObservationDocumentation.LowCardinalityKeyNames.PROCESSING_MODE
-												.asString(),
-										"single"));
+										MessageObservationDocumentation.LowCardinalityKeyNames.OPERATION.asString(),
+										MessagingOperationType.SINGLE_POLLING_PROCESS.getValue()));
 	}
 
 	private MessageProcessingPipeline<Integer> getMessageProcessingPipeline(List<Message<Integer>> received) {

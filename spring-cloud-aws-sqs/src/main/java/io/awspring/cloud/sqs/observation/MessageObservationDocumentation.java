@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.micrometer.common.docs.KeyName;
@@ -30,55 +30,69 @@ import org.springframework.messaging.Message;
  */
 public enum MessageObservationDocumentation implements ObservationDocumentation {
 
-	SINGLE_MESSAGE_PROCESS {
+	SINGLE_MESSAGE_POLLING_PROCESS {
 		@Override
 		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
-			return DefaultSingleMessageObservationConvention.class;
-		}
-
-		@Override
-		public KeyName[] getHighCardinalityKeyNames() {
-			return HighCardinalityKeyNames.values();
-		}
-
-		@Override
-		public KeyName[] getLowCardinalityKeyNames() {
-			return LowCardinalityKeyNames.values();
+			return SingleMessagePollingProcessObservationConvention.class;
 		}
 	},
-	BATCH_MESSAGE_PROCESS {
+	SINGLE_MESSAGE_MANUAL_PROCESS {
 		@Override
 		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
-			return DefaultBatchMessageObservationConvention.class;
+			return SingleMessageManualProcessObservationConvention.class;
 		}
-
+	},
+	BATCH_MESSAGE_POLLING_PROCESS {
 		@Override
-		public KeyName[] getHighCardinalityKeyNames() {
-			return HighCardinalityKeyNames.values();
+		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
+			return BatchMessagePollingProcessObservationConvention.class;
 		}
-
+	},
+	BATCH_MESSAGE_MANUAL_PROCESS {
 		@Override
-		public KeyName[] getLowCardinalityKeyNames() {
-			return LowCardinalityKeyNames.values();
+		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
+			return BatchMessageManualProcessObservationConvention.class;
+		}
+	},
+	SINGLE_MESSAGE_PUBLISH {
+		@Override
+		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
+			return DefaultSingleMessagePublishObservationConvention.class;
+		}
+	},
+	BATCH_MESSAGE_PUBLISH {
+		@Override
+		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
+			return DefaultBatchMessagePublishObservationConvention.class;
 		}
 	};
+
+	@Override
+	public KeyName[] getHighCardinalityKeyNames() {
+		return HighCardinalityKeyNames.values();
+	}
+
+	@Override
+	public KeyName[] getLowCardinalityKeyNames() {
+		return LowCardinalityKeyNames.values();
+	}
 
 	public enum HighCardinalityKeyNames implements KeyName {
 
 		MESSAGE_ID {
 			@Override
 			public String asString() {
-				return "message.id";
+				return "messaging.message.id";
 			}
 		}
 
 	}
 
 	public enum LowCardinalityKeyNames implements KeyName {
-		PROCESSING_MODE {
+		OPERATION {
 			public String asString() {
-				return "messaging.processing.mode";
+				return "messaging.operation";
 			}
-		};
+		}
 	}
 }

@@ -96,6 +96,7 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
  * @author Mikhail Strokov
  * @author Michael Sosa
  * @author gustavomonarin
+ * @author Mariusz Sondecki
  */
 @SpringBootTest
 @TestPropertySource(properties = { "property.one=1", "property.five.seconds=5s",
@@ -364,11 +365,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 		TestObservationRegistryAssert.then(observationRegistry).hasNumberOfObservationsEqualTo(2)
 				.hasHandledContextsThatSatisfy(contexts -> {
-					ObservationContextAssert.then(contexts.get(0)).hasNameEqualTo("sqs.single.message.process")
+					ObservationContextAssert.then(contexts.get(0)).hasNameEqualTo("sqs.single.message.polling.process")
 							.doesNotHaveParentObservation();
 					ObservationContextAssert.then(contexts.get(1)).hasNameEqualTo("listener.process")
 							.hasParentObservationContextMatching(
-									contextView -> contextView.getName().equals("sqs.single.message.process"));
+									contextView -> contextView.getName().equals("sqs.single.message.polling.process"));
 				});
 	}
 

@@ -13,23 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
-
-import io.micrometer.observation.Observation;
-import io.micrometer.observation.ObservationConvention;
+package io.awspring.cloud.sqs.observation;
 
 /**
- * {@link ObservationConvention} interface for {@link MessageObservationDocumentation#SINGLE_MESSAGE_PROCESS SQS message
- * process} operations.
- *
  * @author Mariusz Sondecki
  */
-public interface SingleMessageObservationConvention
-		extends MessageObservationConvention<SingleMessageObservationContext> {
+public enum MessagingOperationType {
+	// @formatter:off
+	SINGLE_MANUAL_PROCESS("single message manual process"),
+	SINGLE_POLLING_PROCESS("single message polling process"),
+	BATCH_MANUAL_PROCESS("batch message manual process"),
+	BATCH_POLLING_PROCESS("batch message polling process"),
+	SINGLE_PUBLISH("single message publish"),
+	BATCH_PUBLISH("batch message publish");
+	// @formatter:on
 
-	@Override
-	default boolean supportsContext(Observation.Context context) {
-		return context instanceof SingleMessageObservationContext;
+	private final String value;
+
+	MessagingOperationType(String value) {
+		this.value = value;
 	}
 
+	public String getValue() {
+		return value;
+	}
 }

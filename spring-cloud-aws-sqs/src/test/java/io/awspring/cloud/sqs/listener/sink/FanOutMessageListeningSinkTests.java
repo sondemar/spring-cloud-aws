@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 import brave.Tracing;
 import brave.handler.MutableSpan;
@@ -24,8 +25,9 @@ import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation;
 import io.awspring.cloud.sqs.listener.pipeline.*;
+import io.awspring.cloud.sqs.observation.MessageObservationDocumentation;
+import io.awspring.cloud.sqs.observation.MessagingOperationType;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.tck.ObservationContextAssert;
@@ -78,17 +80,17 @@ class FanOutMessageListeningSinkTests {
 		assertThat(received).containsExactly(messageToEmit);
 		TestObservationRegistryAssert.then(registry).hasNumberOfObservationsEqualTo(3)
 				.hasHandledContextsThatSatisfy(contexts -> {
-					ObservationContextAssert.then(contexts.get(0)).hasNameEqualTo("sqs.single.message.process")
+					ObservationContextAssert.then(contexts.get(0)).hasNameEqualTo("sqs.single.message.polling.process")
 							.hasHighCardinalityKeyValueWithKey(
 									MessageObservationDocumentation.HighCardinalityKeyNames.MESSAGE_ID.asString())
 							.hasLowCardinalityKeyValue(
-									MessageObservationDocumentation.LowCardinalityKeyNames.PROCESSING_MODE.asString(),
-									"single")
+									MessageObservationDocumentation.LowCardinalityKeyNames.OPERATION.asString(),
+									MessagingOperationType.SINGLE_POLLING_PROCESS.getValue())
 							.doesNotHaveParentObservation();
 
 					ObservationContextAssert.then(contexts.get(1)).hasNameEqualTo("sqs.interceptor.process")
 							.hasParentObservationContextMatching(
-									contextView -> contextView.getName().equals("sqs.single.message.process"));
+									contextView -> contextView.getName().equals("sqs.single.message.polling.process"));
 
 					ObservationContextAssert.then(contexts.get(2)).hasNameEqualTo("sqs.listener.process")
 							.hasHighCardinalityKeyValue("payload", "foo").hasParentObservationContextMatching(
@@ -178,6 +180,9 @@ class FanOutMessageListeningSinkTests {
 					if (currentScope != null) {
 						currentScope.close();
 					}
+					else {
+						fail("A scope for current observation expected");
+					}
 					observation.stop();
 				}
 				return AsyncMessageInterceptor.super.afterProcessing(message, t);
@@ -195,15 +200,16 @@ class FanOutMessageListeningSinkTests {
 
 	private AsyncMessageListener<String> getListener(List<Map<String, String>> contexts, ObservationRegistry registry,
 			io.micrometer.tracing.Tracer tracer) {
-		return message -> Observation.createNotStarted("sqs.listener.process", registry).observe(() -> {
-			Span span = tracer.currentSpan();
-			if (span != null) {
-				TraceContext traceContext = span.context();
-				contexts.add(Map.of(TRACE_ID_HEADER, traceContext.traceId(), SPAN_ID_HEADER, traceContext.spanId(),
-						PARENT_SPAN_ID_HEADER, traceContext.parentId()));
-			}
-			return CompletableFuture.completedFuture(null);
-		});
+		return message -> Objects
+				.requireNonNull(Observation.createNotStarted("sqs.listener.process", registry).observe(() -> {
+					Span span = tracer.currentSpan();
+					if (span != null) {
+						TraceContext traceContext = span.context();
+						contexts.add(Map.of(TRACE_ID_HEADER, traceContext.traceId(), SPAN_ID_HEADER,
+								traceContext.spanId(), PARENT_SPAN_ID_HEADER, traceContext.parentId()));
+					}
+					return CompletableFuture.completedFuture(null);
+				}));
 	}
 
 }

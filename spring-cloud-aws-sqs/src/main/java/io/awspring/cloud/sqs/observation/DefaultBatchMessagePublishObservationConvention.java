@@ -13,25 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
-import io.micrometer.observation.transport.ReceiverContext;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.messaging.MessageHeaders;
 
 /**
- * Context that holds information for observation metadata collection during the
- * {@link MessageObservationDocumentation#SINGLE_MESSAGE_PROCESS processing of received SQS messages}.
- * <p>
- * The inbound tracing information is propagated by looking it up in {@link MessageHeaders#get(Object, Class) incoming
- * SQS message headers}.
+ * Default implementation for {@link BatchMessagePublishObservationConvention}.
  *
  * @author Mariusz Sondecki
  */
-public class SingleMessageObservationContext extends ReceiverContext<MessageHeaders> {
+public class DefaultBatchMessagePublishObservationConvention implements BatchMessagePublishObservationConvention {
 
-	public SingleMessageObservationContext(MessageHeaders messageHeaders) {
-		super((carrier, key) -> carrier.get(key, String.class));
-		setCarrier(messageHeaders);
+	@Override
+	public String getMessageId(BatchMessagePublishObservationContext context) {
+		return context.getMessageHeaders().stream().map(MessageHeaders::getId).filter(Objects::nonNull)
+				.map(UUID::toString).collect(Collectors.joining("; "));
 	}
 
+	@Override
+	public MessagingOperationType getMessageType() {
+		return MessagingOperationType.BATCH_PUBLISH;
+	}
 }

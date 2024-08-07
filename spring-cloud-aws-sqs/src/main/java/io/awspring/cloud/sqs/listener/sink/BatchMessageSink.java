@@ -25,6 +25,7 @@ import org.springframework.messaging.Message;
  * {@link io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline}.
  *
  * @author Tomaz Fernandes
+ * @author Mariusz Sondecki
  * @since 3.0
  */
 public class BatchMessageSink<T> extends AbstractMessageProcessingPipelineSink<T> {

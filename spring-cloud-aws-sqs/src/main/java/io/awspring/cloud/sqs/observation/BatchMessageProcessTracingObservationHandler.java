@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.observation;
+package io.awspring.cloud.sqs.observation;
 
 import io.micrometer.tracing.Link;
 import io.micrometer.tracing.Span;
@@ -28,24 +28,25 @@ import java.util.function.Supplier;
  *
  * @author Mariusz Sondecki
  */
-public class BatchMessageProcessObservationHandler
-		extends PropagatingReceiverTracingObservationHandler<BatchMessageObservationContext> {
+public class BatchMessageProcessTracingObservationHandler
+		extends PropagatingReceiverTracingObservationHandler<BatchMessagePollingProcessObservationContext> {
 
 	private final Supplier<Propagator> propagatorSupplier;
 
 	/**
-	 * Creates a new instance of {@link BatchMessageProcessObservationHandler}.
+	 * Creates a new instance of {@link BatchMessageProcessTracingObservationHandler}.
 	 *
 	 * @param tracer the tracer to use to record events
 	 * @param propagator the mechanism to propagate tracing information from the carrier
 	 */
-	public BatchMessageProcessObservationHandler(Tracer tracer, Propagator propagator) {
+	public BatchMessageProcessTracingObservationHandler(Tracer tracer, Propagator propagator) {
 		super(tracer, propagator);
 		this.propagatorSupplier = () -> propagator;
 	}
 
 	@Override
-	public Span.Builder customizeExtractedSpan(BatchMessageObservationContext context, Span.Builder builder) {
+	public Span.Builder customizeExtractedSpan(BatchMessagePollingProcessObservationContext context,
+			Span.Builder builder) {
 		context.getCarrier().forEach(messageHeaders -> {
 			TraceContext traceContext = this.propagatorSupplier.get()
 					.extract(messageHeaders, (carrier, key) -> carrier.get(key, String.class)).start().context();

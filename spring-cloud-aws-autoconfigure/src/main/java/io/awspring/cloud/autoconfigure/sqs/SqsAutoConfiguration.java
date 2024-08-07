@@ -18,11 +18,7 @@ package io.awspring.cloud.autoconfigure.sqs;
 import static org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration.RECEIVER_TRACING_OBSERVATION_HANDLER_ORDER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.autoconfigure.core.AwsClientBuilderConfigurer;
-import io.awspring.cloud.autoconfigure.core.AwsClientCustomizer;
-import io.awspring.cloud.autoconfigure.core.AwsConnectionDetails;
-import io.awspring.cloud.autoconfigure.core.CredentialsProviderAutoConfiguration;
-import io.awspring.cloud.autoconfigure.core.RegionProviderAutoConfiguration;
+import io.awspring.cloud.autoconfigure.core.*;
 import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsListenerConfigurer;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
@@ -31,7 +27,7 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
-import io.awspring.cloud.sqs.listener.observation.BatchMessageProcessObservationHandler;
+import io.awspring.cloud.sqs.observation.BatchMessageProcessTracingObservationHandler;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import io.awspring.cloud.sqs.operations.SqsTemplateBuilder;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
@@ -49,6 +45,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -59,6 +56,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClientBuilder;
  *
  * @author Tomaz Fernandes
  * @author Maciej Walkowiak
+ * @author Mariusz Sondecki
  * @since 3.0
  */
 @AutoConfiguration
@@ -86,10 +84,12 @@ public class SqsAutoConfiguration {
 
 	@ConditionalOnMissingBean
 	@Bean
-	public SqsTemplate sqsTemplate(SqsAsyncClient sqsAsyncClient, ObjectProvider<ObjectMapper> objectMapperProvider) {
+	public SqsTemplate sqsTemplate(SqsAsyncClient sqsAsyncClient, ObjectProvider<ObjectMapper> objectMapperProvider,
+			ObjectProvider<ObservationRegistry> observationRegistry) {
 		SqsTemplateBuilder builder = SqsTemplate.builder().sqsAsyncClient(sqsAsyncClient);
 		objectMapperProvider
 				.ifAvailable(om -> builder.configureDefaultConverter(converter -> converter.setObjectMapper(om)));
+		observationRegistry.ifAvailable(builder::observationRegistry);
 		return builder.build();
 	}
 
@@ -113,15 +113,6 @@ public class SqsAutoConfiguration {
 		observationRegistry.ifAvailable(factory::setObservationRegistry);
 
 		return factory;
-	}
-
-	@Bean
-	@ConditionalOnMissingBean
-	@ConditionalOnBean({ Tracer.class, Propagator.class })
-	@Order(RECEIVER_TRACING_OBSERVATION_HANDLER_ORDER - 100)
-	public BatchMessageProcessObservationHandler batchMessageProcessObservationHandler(Tracer tracer,
-			Propagator propagator) {
-		return new BatchMessageProcessObservationHandler(tracer, propagator);
 	}
 
 	private void setObjectMapper(SqsMessageListenerContainerFactory<Object> factory, ObjectMapper objectMapper) {
@@ -149,4 +140,17 @@ public class SqsAutoConfiguration {
 		};
 	}
 
+	@Configuration(proxyBeanMethods = false)
+	@ConditionalOnBean({ Tracer.class, Propagator.class })
+	public static class SqsTracingConfiguration {
+
+		@Bean
+		@ConditionalOnMissingBean
+		@Order(RECEIVER_TRACING_OBSERVATION_HANDLER_ORDER - 100)
+		public BatchMessageProcessTracingObservationHandler batchMessageProcessTracingObservationHandler(Tracer tracer,
+				Propagator propagator) {
+			return new BatchMessageProcessTracingObservationHandler(tracer, propagator);
+		}
+
+	}
 }

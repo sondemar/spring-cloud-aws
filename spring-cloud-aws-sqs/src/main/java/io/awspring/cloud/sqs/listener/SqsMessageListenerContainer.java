@@ -102,6 +102,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
  *     be used.
  *
  * @author Tomaz Fernandes
+ * @author Mariusz Sondecki
  * @since 3.0
  */
 public class SqsMessageListenerContainer<T>
@@ -141,6 +142,8 @@ public class SqsMessageListenerContainer<T>
 	protected void doConfigureMessageSources(Collection<MessageSource<T>> messageSources) {
 		ConfigUtils.INSTANCE.acceptManyIfInstance(messageSources, SqsAsyncClientAware.class,
 				asca -> asca.setSqsAsyncClient(this.sqsAsyncClient));
+		ConfigUtils.INSTANCE.acceptIfInstance(messageSources, ObservationRegistryAware.class,
+				asca -> asca.setObservationRegistry(this.getObservationRegistry()));
 	}
 
 	@Override

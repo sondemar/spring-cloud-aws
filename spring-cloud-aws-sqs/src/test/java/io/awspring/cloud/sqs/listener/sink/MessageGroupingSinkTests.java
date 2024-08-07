@@ -21,9 +21,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
-import io.awspring.cloud.sqs.listener.observation.MessageObservationDocumentation;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.sink.adapter.MessageGroupingSinkAdapter;
+import io.awspring.cloud.sqs.observation.MessageObservationDocumentation;
+import io.awspring.cloud.sqs.observation.MessagingOperationType;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * Tests for {@link MessageGroupingSinkAdapter}.
  *
  * @author Tomaz Fernandes
+ * @author Mariusz Sondecki
  */
 class MessageGroupingSinkTests {
 
@@ -67,10 +69,9 @@ class MessageGroupingSinkTests {
 		List<Message<Integer>> received = Collections.synchronizedList(new ArrayList<>());
 		TestObservationRegistry registry = TestObservationRegistry.create();
 
-		OrderedMessageSink<Integer> messageSink = new OrderedMessageSink<>();
-		messageSink.setObservationRegistry(registry);
-		MessageGroupingSinkAdapter<Integer> sinkAdapter = new MessageGroupingSinkAdapter<>(messageSink,
+		MessageGroupingSinkAdapter<Integer> sinkAdapter = new MessageGroupingSinkAdapter<>(new OrderedMessageSink<>(),
 				message -> message.getHeaders().get(header, String.class));
+		sinkAdapter.setObservationRegistry(registry);
 		sinkAdapter.setTaskExecutor(new SimpleAsyncTaskExecutor());
 		sinkAdapter.setMessagePipeline(new MessageProcessingPipeline<>() {
 			@Override
@@ -96,15 +97,14 @@ class MessageGroupingSinkTests {
 		assertThat(receivedMessages.get(secondMessageGroupId)).containsExactlyElementsOf(secondMessageGroupMessages);
 		assertThat(receivedMessages.get(thirdMessageGroupId)).containsExactlyElementsOf(thirdMessageGroupMessages);
 		TestObservationRegistryAssert.assertThat(registry)
-				.hasNumberOfObservationsWithNameEqualTo("sqs.single.message.process", 30)
-				.forAllObservationsWithNameEqualTo("sqs.single.message.process",
+				.hasNumberOfObservationsWithNameEqualTo("sqs.single.message.polling.process", 30)
+				.forAllObservationsWithNameEqualTo("sqs.single.message.polling.process",
 						observationContextAssert -> observationContextAssert
 								.hasHighCardinalityKeyValueWithKey(
 										MessageObservationDocumentation.HighCardinalityKeyNames.MESSAGE_ID.asString())
 								.hasLowCardinalityKeyValue(
-										MessageObservationDocumentation.LowCardinalityKeyNames.PROCESSING_MODE
-												.asString(),
-										"single"));
+										MessageObservationDocumentation.LowCardinalityKeyNames.OPERATION.asString(),
+										MessagingOperationType.SINGLE_POLLING_PROCESS.getValue()));
 	}
 
 	@NotNull
