@@ -45,14 +45,17 @@ public final class ContextScopeManager {
 		this.currentContextSnapshot = currentContextSnapshot;
 		this.previousContextSnapshot = previousContextSnapshot;
 		this.observationRegistry = observationRegistry;
+
+		logNoOpObservationRegistry();
 	}
 
 	public void restoreScope() {
-		closeScope(); // Ensure current scope is closed
+		if (observationRegistry.isNoop()) {
+			return;
+		}
+		closeCurrentScope(); // Ensure current scope is closed
 		if (observationRegistry.getCurrentObservationScope() == null && previousContextSnapshot != null) {
-			logger.trace("Restoring previous scope");
-			previousContextSnapshot.setThreadLocals();
-			logger.debug("Previous scope restored successfully");
+			restorePreviousScope();
 		}
 		else {
 			logger.trace(
@@ -63,20 +66,29 @@ public final class ContextScopeManager {
 	// @formatter:off
 	public <T, U> CompletableFuture<U> manageContextWhileComposing(CompletableFuture<T> future,
 														 Function<? super T, ? extends CompletableFuture<U>> fn) {
+		if (observationRegistry.isNoop()){
+			return future.thenCompose(fn);
+		}
 		return future
-			.whenComplete((t, throwable) -> closeScope())
+			.whenComplete((t, throwable) -> closeCurrentScope())
 			.thenCompose(fn)
-			.whenComplete((u, throwable) -> openScope());
+			.whenComplete((u, throwable) -> openCurrentScope());
 	}
 	// @formatter:on
 
-	private void openScope() {
+	private void restorePreviousScope() {
+		logger.trace("Restoring previous scope");
+		previousContextSnapshot.setThreadLocals();
+		logger.debug("Previous scope restored successfully");
+	}
+
+	private void openCurrentScope() {
 		logger.trace("Opening scope");
 		currentScope = currentContextSnapshot.setThreadLocals();
 		logger.debug("Scope opened successfully");
 	}
 
-	private void closeScope() {
+	private void closeCurrentScope() {
 		if (currentScope != null && observationRegistry.getCurrentObservationScope() != null) {
 			try {
 				logger.trace("Closing scope");
@@ -93,4 +105,9 @@ public final class ContextScopeManager {
 		}
 	}
 
+	private void logNoOpObservationRegistry() {
+		if (observationRegistry.isNoop()) {
+			logger.trace("ObservationRegistry is in No-Op mode");
+		}
+	}
 }
